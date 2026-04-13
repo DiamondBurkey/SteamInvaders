@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Steam Invaders">
+<meta name="theme-color" content="#1a0f00">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-512.png">
+<title>Steam Invaders</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Special+Elite&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0d0800;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:'Special Elite',serif;overflow:hidden;touch-action:none}
+#gameWrap{position:relative}
+canvas{display:block;border:2px solid #8B6914;box-shadow:0 0 30px rgba(180,120,20,0.4),inset 0 0 30px rgba(0,0,0,0.8)}
+#ui{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:6px 12px;background:linear-gradient(180deg,rgba(20,10,0,0.9) 0%,transparent 100%);pointer-events:none}
+.ui-block{display:flex;flex-direction:column;align-items:center;gap:1px}
+.ui-label{font-size:9px;color:#8B6914;letter-spacing:2px;text-transform:uppercase}
+.ui-val{font-size:18px;color:#D4A017;text-shadow:0 0 8px rgba(212,160,23,0.8)}
+#powerupIndicator{position:absolute;bottom:58px;left:50%;transform:translateX(-50%);font-size:12px;color:#FFD700;text-shadow:0 0 10px #FFD700;letter-spacing:1px;opacity:0;transition:opacity 0.3s;white-space:nowrap;pointer-events:none}
+#waveBanner{position:absolute;top:38%;left:0;right:0;text-align:center;font-size:20px;letter-spacing:3px;pointer-events:none;opacity:0;transition:opacity 0.4s;z-index:5;line-height:1.5}
+#waveBanner.danger{color:#ff60ff;text-shadow:0 0 20px #ff00ff,0 0 40px #aa00aa}
+#waveBanner.normal{color:#D4A017;text-shadow:0 0 16px rgba(212,160,23,0.9)}
+#touchControls{position:absolute;bottom:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:4px 10px;background:rgba(10,5,0,0.7);height:52px;gap:8px}
+#sliderWrap{flex:1;display:flex;align-items:center;position:relative;height:44px;max-width:220px}
+#sliderTrack{width:100%;height:12px;background:rgba(139,105,20,0.2);border:1px solid #8B6914;border-radius:6px;position:relative;cursor:pointer;touch-action:none}
+#sliderThumb{width:36px;height:36px;background:linear-gradient(180deg,#a07830,#5a3a10);border:2px solid #D4A017;border-radius:6px;position:absolute;top:50%;transform:translate(-50%,-50%);left:50%;display:flex;align-items:center;justify-content:center;color:#FFD700;font-size:16px;box-shadow:0 0 10px rgba(212,160,23,0.4);cursor:grab;touch-action:none;user-select:none;transition:box-shadow 0.1s}
+#sliderThumb:active{cursor:grabbing;box-shadow:0 0 18px rgba(212,160,23,0.7)}
+.slider-label{font-size:8px;color:#8B6914;letter-spacing:1px;text-align:center;margin-top:2px}
+#fireBtn{background:linear-gradient(180deg,#8B6914,#5a4010);border:2px solid #D4A017;border-radius:8px;color:#FFD700;font-family:'Special Elite',serif;font-size:13px;letter-spacing:1px;padding:10px 14px;cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:manipulation;min-width:72px;text-align:center;box-shadow:0 0 12px rgba(212,160,23,0.3);flex-shrink:0}
+#fireBtn:active{background:linear-gradient(180deg,#a07820,#6a5018);box-shadow:0 0 20px rgba(212,160,23,0.6)}
+#overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(10,5,0,0.88);z-index:10}
+#overlay h1{font-size:28px;color:#D4A017;text-shadow:0 0 20px rgba(212,160,23,0.8);letter-spacing:4px;margin-bottom:8px;text-align:center}
+#overlay p{color:#A08030;font-size:13px;letter-spacing:2px;margin-bottom:6px;text-align:center}
+#overlay .score-display{color:#FFD700;font-size:20px;margin:10px 0}
+#startBtn{margin-top:16px;background:linear-gradient(180deg,#8B6914,#5a4010);border:2px solid #D4A017;color:#FFD700;font-family:'Special Elite',serif;font-size:16px;letter-spacing:3px;padding:12px 32px;cursor:pointer;border-radius:4px;text-shadow:0 0 8px rgba(255,215,0,0.6);box-shadow:0 0 20px rgba(212,160,23,0.4)}
+#startBtn:hover{background:linear-gradient(180deg,#a07820,#6a5018);box-shadow:0 0 30px rgba(212,160,23,0.6)}
+.gear-deco{color:#8B6914;font-size:22px;margin:4px 0;opacity:0.7}
+</style>
+</head>
+<body>
+<div id="gameWrap">
+  <canvas id="c"></canvas>
+  <div id="ui">
+    <div class="ui-block"><span class="ui-label">Score</span><span class="ui-val" id="scoreEl">0</span></div>
+    <div class="ui-block"><span class="ui-label">Wave</span><span class="ui-val" id="waveEl">1</span></div>
+    <div class="ui-block"><span class="ui-label">Lives</span><span class="ui-val" id="livesEl">♥♥♥</span></div>
+  </div>
+  <div id="powerupIndicator"></div>
+  <div id="waveBanner"></div>
+  <div id="touchControls">
+    <div style="display:flex;flex-direction:column;align-items:center;flex:1;max-width:220px">
+      <div id="sliderWrap"><div id="sliderTrack"><div id="sliderThumb">⚙</div></div></div>
+      <div class="slider-label">HELM</div>
+    </div>
+    <button id="fireBtn">🔥 FIRE</button>
+  </div>
+  <div id="overlay">
+    <div class="gear-deco">⚙ ⚙ ⚙</div>
+    <h1>STEAM<br>INVADERS</h1>
+    <div class="gear-deco">⚙ ⚙ ⚙</div>
+    <p>— Aetheric Warfare Division —</p>
+    <p style="font-size:11px;margin-top:8px;color:#6B5020">
+      Bosses drop power-ups: ✦ Triple &nbsp;✦ Explosive &nbsp;✦ Flamethrower<br>
+      Top boss drops: ⚡ LASER — one shot destroys everything in its path!<br>
+      Every 5th wave: ⚠ DIVE-BOMBER GAUNTLET — 3 hits each, no mercy!
+    </p>
+    <div class="score-display" id="finalScore"></div>
+    <button id="startBtn">ENGAGE</button>
+  </div>
+</div>
+
+<script>
+const canvas=document.getElementById('c'),ctx=canvas.getContext('2d');
+const overlay=document.getElementById('overlay'),startBtn=document.getElementById('startBtn');
+const scoreEl=document.getElementById('scoreEl'),waveEl=document.getElementById('waveEl'),livesEl=document.getElementById('livesEl');
+const pwrInd=document.getElementById('powerupIndicator'),finalScore=document.getElementById('finalScore');
+const sliderTrack=document.getElementById('sliderTrack'),sliderThumb=document.getElementById('sliderThumb');
+const waveBanner=document.getElementById('waveBanner');
+
+// ── Sizing ──────────────────────────────────────────────────────
+function resize(){
+  const maxW=Math.min(window.innerWidth,480),maxH=window.innerHeight-52,ratio=3/4;
+  let w=maxW,h=w/ratio;
+  if(h>maxH){h=maxH;w=h*ratio;}
+  canvas.width=Math.floor(w);canvas.height=Math.floor(h);
+  document.getElementById('gameWrap').style.width=canvas.width+'px';
+}
+resize();
+window.addEventListener('resize',()=>{resize();if(!gameRunning)drawTitle();});
+
+// ── Slider ──────────────────────────────────────────────────────
+let sliderVal=0,sliderDragging=false;
+function getSliderPct(cx){const r=sliderTrack.getBoundingClientRect();return Math.max(0,Math.min(1,(cx-r.left)/r.width));}
+function applySliderPct(p){sliderVal=(p-0.5)*2;if(Math.abs(sliderVal)<0.12)sliderVal=0;sliderThumb.style.left=(p*100)+'%';}
+function resetSlider(){sliderDragging=false;sliderVal=0;sliderThumb.style.left='50%';}
+sliderTrack.addEventListener('touchstart',e=>{e.preventDefault();sliderDragging=true;applySliderPct(getSliderPct(e.touches[0].clientX));},{passive:false});
+sliderTrack.addEventListener('touchmove',e=>{e.preventDefault();if(sliderDragging)applySliderPct(getSliderPct(e.touches[0].clientX));},{passive:false});
+sliderTrack.addEventListener('touchend',e=>{e.preventDefault();resetSlider();},{passive:false});
+sliderTrack.addEventListener('mousedown',e=>{sliderDragging=true;applySliderPct(getSliderPct(e.clientX));});
+window.addEventListener('mousemove',e=>{if(sliderDragging)applySliderPct(getSliderPct(e.clientX));});
+window.addEventListener('mouseup',()=>{if(sliderDragging)resetSlider();});
+
+// ── Game state ──────────────────────────────────────────────────
+let score=0,lives=3,wave=1,gameRunning=false;
+let player,bullets=[],enemyBullets=[],enemies=[];
+let boss=null,powerup=null;
+let activePowerup=null,powerupTimer=0;
+let enemyDir=1,enemySpeed=0.4;
+let frameId,lastTime=0,fireCD=0,bossTimer=0;
+let keys={},flameParticles=[],explosions=[];
+// Laser beam: instantaneous column destroy — stored as an animation-only object
+let laserBeam=null; // {x, life, maxLife}
+
+// ── Dive-bomber pool (shared normal + gauntlet) ─────────────────
+let diveBombers=[];
+// Normal-wave roving bomber timer
+let diveBomberTimer=0;
+// Gauntlet
+let isGauntletWave=false;
+let gauntletTotal=0,gauntletRemaining=0,gauntletSpawnQueue=0,gauntletSpawnTimer=0;
+
+// Banner
+let bannerTO=null;
+function showBanner(txt,cls,dur=2200){
+  waveBanner.innerHTML=txt;waveBanner.className=cls;waveBanner.style.opacity='1';
+  if(bannerTO)clearTimeout(bannerTO);
+  bannerTO=setTimeout(()=>waveBanner.style.opacity='0',dur);
+}
+
+// ── Input ───────────────────────────────────────────────────────
+window.addEventListener('keydown',e=>{keys[e.key]=true;if(e.key===' '){e.preventDefault();if(gameRunning)shoot();}});
+window.addEventListener('keyup',e=>keys[e.key]=false);
+document.getElementById('fireBtn').addEventListener('touchstart',e=>{e.preventDefault();if(gameRunning)shoot();},{passive:false});
+document.getElementById('fireBtn').addEventListener('click',()=>{if(gameRunning)shoot();});
+startBtn.addEventListener('click',startGame);
+
+// ── Start ───────────────────────────────────────────────────────
+function startGame(){
+  overlay.style.display='none';
+  score=0;lives=3;wave=1;gameRunning=true;
+  bullets=[];enemyBullets=[];boss=null;powerup=null;
+  activePowerup=null;powerupTimer=0;
+  flameParticles=[];explosions=[];diveBombers=[];laserBeam=null;
+  spawnPlayer();beginWave();updateUI();
+  if(frameId)cancelAnimationFrame(frameId);
+  lastTime=0;frameId=requestAnimationFrame(loop);
+}
+
+function isSpecialWave(w){return w%5===0;}
+function gauntletCount(w){return 1+Math.floor(w/5);}  // wave5→2, wave10→3, wave15→4…
+
+function beginWave(){
+  enemies=[];diveBombers=[];boss=null;powerup=null;
+  bullets=[];enemyBullets=[];flameParticles=[];laserBeam=null;
+  isGauntletWave=isSpecialWave(wave);
+  if(isGauntletWave){
+    const n=gauntletCount(wave);
+    gauntletTotal=n;gauntletRemaining=n;gauntletSpawnQueue=n;gauntletSpawnTimer=80;
+    bossTimer=99999;diveBomberTimer=99999;
+    showBanner(`⚠ GAUNTLET WAVE ${wave} ⚠<br>${n} DIVE-BOMBERS INCOMING`,'danger',3200);
+  } else {
+    spawnNormalWave();
+    bossTimer=400+Math.random()*300;
+    diveBomberTimer=300+Math.random()*300;
+    const sceneNames=['Deep Space','Purple Nebula','Gas Giant','Spiral Galaxy','Supernova Remnant','Ice Giant','Globular Cluster','Twin Planets','Emission Nebula','Black Hole'];
+    const sceneName=sceneNames[(wave-1)%sceneNames.length];
+    showBanner(`— WAVE ${wave} —<br><span style="font-size:13px;opacity:0.7">${sceneName}</span>`,'normal',1800);
+  }
+}
+
+function spawnNormalWave(){
+  enemyDir=1;
+  const cols=9,rows=4,W=canvas.width;
+  const startX=30,spacingX=(W-60)/cols,startY=70,spacingY=36;
+  for(let r=0;r<rows;r++)for(let c=0;c<cols;c++)
+    enemies.push({x:startX+c*spacingX,y:startY+r*spacingY,w:28,h:20,type:r,alive:true,animFrame:0,animTimer:0});
+  enemySpeed=0.4+(wave-1)*0.18;
+}
+
+function spawnPlayer(){const W=canvas.width,H=canvas.height;player={x:W/2-18,y:H-55,w:36,h:22,speed:4};}
+
+function makeDiveBomber(gauntlet=false){
+  const W=canvas.width;
+  return{x:30+Math.random()*(W-90),y:-40,w:34,h:28,phase:'dive',
+    vy:gauntlet?4.2:3.5,targetY:canvas.height*(0.28+Math.random()*0.15),
+    hp:gauntlet?3:2,maxHp:gauntlet?3:2,alive:true,animTimer:0,shootCD:0,retreatTimer:0,isGauntlet:gauntlet};
+}
+
+function spawnBoss(){
+  const W=canvas.width,dir=Math.random()<0.5?1:-1;
+  boss={x:dir>0?-80:W+80,y:28,w:64,h:30,dx:dir*1.8,hp:1,alive:true,animTimer:0};
+}
+
+function spawnPowerup(x,y,fromBoss=false){
+  // Top boss (dirigible) exclusively drops laser
+  const type=fromBoss?'laser':(()=>{const r=Math.random();return r<0.33?'triple':r<0.66?'explosive':'flame';})();
+  powerup={x,y,type,vy:1.2,w:22,h:22,bob:0};
+}
+
+function showPowerupMsg(type){
+  const m={triple:'✦ TRIPLE SHOT ACTIVE ✦',explosive:'✦ EXPLOSIVE ROUND ACTIVE ✦',flame:'🔥 FLAMETHROWER ACTIVE 🔥',laser:'⚡ LASER CHARGED — FIRE TO RELEASE ⚡'};
+  pwrInd.textContent=m[type]||'';pwrInd.style.opacity='1';
+  setTimeout(()=>pwrInd.style.opacity='0',2200);
+}
+
+function updateUI(){
+  scoreEl.textContent=score;
+  waveEl.textContent=wave+(isGauntletWave?' ⚠':'');
+  livesEl.textContent='♥'.repeat(lives);
+}
+
+// ── Shoot ───────────────────────────────────────────────────────
+function fireLaser(){
+  // Instant column destroy — fire at player gun x
+  const lx=player.x+player.w/2;
+  laserBeam={x:lx,life:22,maxLife:22};
+  // Destroy all enemies in the column (±20px wide beam)
+  const beamHalf=14;
+  enemies.forEach(e=>{
+    if(e.alive&&e.x+e.w>lx-beamHalf&&e.x<lx+beamHalf){
+      e.alive=false;addExplosion(e.x+e.w/2,e.y+e.h/2);score+=10*(e.type+1);
+    }
+  });
+  // Boss
+  if(boss&&boss.alive&&boss.x+boss.w>lx-beamHalf&&boss.x<lx+beamHalf){
+    boss.alive=false;score+=150;addExplosion(boss.x+boss.w/2,boss.y+boss.h/2);boss=null;
+  }
+  // Dive-bombers
+  diveBombers.forEach(d=>{
+    if(d.alive&&d.x+d.w>lx-beamHalf&&d.x<lx+beamHalf){
+      // Full-kill regardless of hp
+      const prev=d.hp;d.hp=0;
+      addExplosion(d.x+d.w/2,d.y+d.h/2);
+      score+=d.isGauntlet?400:250;
+      d.alive=false;
+      if(isGauntletWave){gauntletRemaining--;checkGauntletComplete();}
+      else{diveBomberTimer=400+Math.random()*400;}
+    }
+  });
+  activePowerup=null; // single use — consume immediately
+}
+
+function shoot(){
+  if(fireCD>0)return;fireCD=18;
+  const bx=player.x+player.w/2,by=player.y;
+  if(activePowerup==='laser'){
+    fireLaser();return;
+  }else if(activePowerup==='triple'){
+    bullets.push({x:bx,y:by,dx:-2,dy:-7,r:4,type:'triple'});
+    bullets.push({x:bx,y:by,dx:0,dy:-8,r:4,type:'triple'});
+    bullets.push({x:bx,y:by,dx:2,dy:-7,r:4,type:'triple'});
+  }else if(activePowerup==='explosive'){
+    bullets.push({x:bx,y:by,dx:0,dy:-8,r:6,type:'explosive'});
+  }else if(activePowerup==='flame'){
+    for(let i=0;i<6;i++)flameParticles.push({x:bx+(Math.random()-0.5)*8,y:by,dx:(Math.random()-0.5)*3,dy:-(5+Math.random()*4),life:1,r:5+Math.random()*5});
+    fireCD=4;
+  }else{
+    bullets.push({x:bx,y:by,dx:0,dy:-8,r:4,type:'normal'});
+  }
+}
+
+// ── Draw helpers ─────────────────────────────────────────────────
+// ── Space background scenes ──────────────────────────────────────
+// Simple seeded PRNG so stars/details are stable per wave
+function mkRng(seed){
+  let s=seed|0;
+  return()=>{s=(s^(s<<13))>>>0;s=(s^(s>>7))>>>0;s=(s^(s<<17))>>>0;return(s>>>0)/4294967296;};
+}
+
+// 10 scene themes, cycling by wave index
+const SCENES=[
+  drawSceneDeepSpace,       // 0 – classic deep space star field
+  drawScenePurpleNebula,    // 1 – purple/pink emission nebula
+  drawSceneGasGiant,        // 2 – ringed gas giant
+  drawSceneSpiralGalaxy,    // 3 – spiral galaxy
+  drawSceneRedNebula,       // 4 – fiery red supernova remnant
+  drawSceneIceGiant,        // 5 – blue ice-giant with rings
+  drawSceneGlobularCluster, // 6 – dense star cluster
+  drawSceneTwoPlanets,      // 7 – twin planets + moon
+  drawSceneGreenNebula,     // 8 – teal/green emission cloud
+  drawSceneBlackHole,       // 9 – accretion disk black hole
+];
+
+function getSceneIndex(){return(wave-1)%SCENES.length;}
+
+function drawStarfield(W,H,rng,count=80,col='rgba(255,230,180,'){
+  for(let i=0;i<count;i++){
+    const x=rng()*W,y=rng()*H,s=rng()*1.6,a=0.3+rng()*0.7;
+    ctx.fillStyle=col+a+')';ctx.fillRect(x,y,s,s);
+  }
+}
+
+function drawBackground(){
+  const W=canvas.width,H=canvas.height;
+  const rng=mkRng(wave*7919+(isGauntletWave?99991:0));
+
+  if(isGauntletWave){
+    // Gauntlet override: deep crimson void with pulsing border
+    ctx.fillStyle='#0a0008';ctx.fillRect(0,0,W,H);
+    drawStarfield(W,H,rng,50,'rgba(255,100,180,');
+    // Faint blood-red nebula swirls
+    for(let i=0;i<3;i++){
+      const nx=rng()*W,ny=rng()*H,nr=60+rng()*80;
+      const g=ctx.createRadialGradient(nx,ny,0,nx,ny,nr);
+      g.addColorStop(0,`rgba(180,0,40,${0.06+rng()*0.06})`);
+      g.addColorStop(1,'transparent');
+      ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+    }
+    applyScanlines(W,H);applyVignette(W,H);
+    ctx.strokeStyle=`rgba(200,0,60,${0.2+0.12*Math.sin(Date.now()*0.004)})`;
+    ctx.lineWidth=6;ctx.strokeRect(1,1,W-2,H-2);
+    return;
+  }
+
+  SCENES[getSceneIndex()](W,H,rng);
+  applyScanlines(W,H);
+  applyVignette(W,H);
+}
+
+function applyScanlines(W,H){
+  ctx.fillStyle='rgba(0,0,0,0.07)';for(let y=0;y<H;y+=3)ctx.fillRect(0,y,W,1);
+}
+function applyVignette(W,H){
+  const vg=ctx.createRadialGradient(W/2,H/2,H*0.25,W/2,H/2,H*0.82);
+  vg.addColorStop(0,'transparent');vg.addColorStop(1,'rgba(0,0,0,0.62)');
+  ctx.fillStyle=vg;ctx.fillRect(0,0,W,H);
+}
+
+// ── Scene 0: Deep Space ──────────────────────────────────────────
+function drawSceneDeepSpace(W,H,rng){
+  ctx.fillStyle='#050510';ctx.fillRect(0,0,W,H);
+  // Milky way band
+  const band=ctx.createLinearGradient(0,H*0.2,W,H*0.8);
+  band.addColorStop(0,'transparent');
+  band.addColorStop(0.3,`rgba(100,120,180,0.07)`);
+  band.addColorStop(0.5,`rgba(140,160,220,0.12)`);
+  band.addColorStop(0.7,`rgba(100,120,180,0.07)`);
+  band.addColorStop(1,'transparent');
+  ctx.fillStyle=band;ctx.fillRect(0,0,W,H);
+  drawStarfield(W,H,rng,120,'rgba(200,210,255,');
+  // A few bright stars
+  for(let i=0;i<6;i++){
+    const x=rng()*W,y=rng()*H;
+    ctx.fillStyle='rgba(255,255,255,0.9)';ctx.fillRect(x,y,2,2);
+    const g=ctx.createRadialGradient(x,y,0,x,y,6);
+    g.addColorStop(0,'rgba(200,220,255,0.4)');g.addColorStop(1,'transparent');
+    ctx.fillStyle=g;ctx.fillRect(x-6,y-6,12,12);
+  }
+}
+
+// ── Scene 1: Purple Nebula ───────────────────────────────────────
+function drawScenePurpleNebula(W,H,rng){
+  ctx.fillStyle='#06020f';ctx.fillRect(0,0,W,H);
+  const clouds=[
+    [W*0.3,H*0.35,W*0.55,['rgba(120,0,200,0.14)','rgba(180,40,255,0.08)','transparent']],
+    [W*0.7,H*0.55,W*0.4,['rgba(200,60,255,0.12)','rgba(100,0,160,0.07)','transparent']],
+    [W*0.5,H*0.2,W*0.3,['rgba(255,80,200,0.1)','rgba(160,20,220,0.06)','transparent']],
+  ];
+  clouds.forEach(([cx,cy,cr,stops])=>{
+    const g=ctx.createRadialGradient(cx,cy,0,cx,cy,cr);
+    stops.forEach((s,i)=>g.addColorStop(i/(stops.length-1),s));
+    ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  });
+  drawStarfield(W,H,rng,100,'rgba(220,180,255,');
+  // Bright nebula wisps
+  ctx.save();ctx.globalAlpha=0.18;
+  for(let i=0;i<5;i++){
+    const wx=rng()*W,wy=rng()*H,wr=20+rng()*50;
+    const g=ctx.createRadialGradient(wx,wy,0,wx,wy,wr);
+    g.addColorStop(0,'rgba(200,120,255,0.6)');g.addColorStop(1,'transparent');
+    ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  }
+  ctx.restore();
+}
+
+// ── Scene 2: Gas Giant ───────────────────────────────────────────
+function drawSceneGasGiant(W,H,rng){
+  ctx.fillStyle='#020810';ctx.fillRect(0,0,W,H);
+  drawStarfield(W,H,rng,90,'rgba(200,200,255,');
+  // Planet body
+  const px=W*(0.3+rng()*0.4),py=H*(0.15+rng()*0.25),pr=H*(0.18+rng()*0.1);
+  const pg=ctx.createRadialGradient(px-pr*0.3,py-pr*0.3,pr*0.05,px,py,pr);
+  pg.addColorStop(0,'#f5c26a');pg.addColorStop(0.3,'#d4901a');pg.addColorStop(0.6,'#b86010');pg.addColorStop(1,'#4a2008');
+  ctx.fillStyle=pg;ctx.beginPath();ctx.arc(px,py,pr,0,Math.PI*2);ctx.fill();
+  // Bands
+  ctx.save();ctx.beginPath();ctx.arc(px,py,pr,0,Math.PI*2);ctx.clip();
+  const bands=[0.2,0.38,0.55,0.72,0.88];
+  const bandCols=['rgba(180,100,20,0.35)','rgba(220,160,60,0.25)','rgba(160,70,10,0.3)','rgba(200,130,40,0.2)','rgba(140,60,5,0.25)'];
+  bands.forEach((b,i)=>{
+    ctx.fillStyle=bandCols[i];ctx.fillRect(px-pr,py-pr+b*pr*2-6,pr*2,10+rng()*8);
+  });
+  ctx.restore();
+  // Rings
+  ctx.save();ctx.translate(px,py);ctx.scale(1,0.28);
+  for(let r=0;r<4;r++){
+    const ri=pr*(1.35+r*0.18),ro=pr*(1.35+r*0.18+0.13);
+    const rg=ctx.createRadialGradient(0,0,ri,0,0,ro);
+    rg.addColorStop(0,`rgba(210,170,90,${0.3-r*0.06})`);
+    rg.addColorStop(0.5,`rgba(240,200,120,${0.18-r*0.04})`);
+    rg.addColorStop(1,'transparent');
+    ctx.fillStyle=rg;ctx.beginPath();ctx.arc(0,0,ro,0,Math.PI*2);ctx.fill();
+  }
+  ctx.restore();
+  // Shadow on planet from rings
+  ctx.save();ctx.globalAlpha=0.25;
+  const sh=ctx.createLinearGradient(px-pr,py-4,px+pr,py+4);
+  sh.addColorStop(0,'transparent');sh.addColorStop(0.4,'rgba(0,0,0,0.5)');sh.addColorStop(0.6,'rgba(0,0,0,0.5)');sh.addColorStop(1,'transparent');
+  ctx.fillStyle=sh;ctx.beginPath();ctx.arc(px,py,pr,0,Math.PI*2);ctx.fill();ctx.restore();
+}
+
+// ── Scene 3: Spiral Galaxy ───────────────────────────────────────
+function drawSceneSpiralGalaxy(W,H,rng){
+  ctx.fillStyle='#020208';ctx.fillRect(0,0,W,H);
+  drawStarfield(W,H,rng,60,'rgba(180,200,255,');
+  const gx=W*(0.3+rng()*0.4),gy=H*(0.2+rng()*0.35);
+  // Core glow
+  const core=ctx.createRadialGradient(gx,gy,0,gx,gy,60);
+  core.addColorStop(0,'rgba(255,240,200,0.7)');
+  core.addColorStop(0.2,'rgba(220,200,255,0.3)');
+  core.addColorStop(0.6,'rgba(100,120,200,0.1)');
+  core.addColorStop(1,'transparent');
+  ctx.fillStyle=core;ctx.fillRect(0,0,W,H);
+  // Arms — draw as tilted ellipses
+  ctx.save();ctx.translate(gx,gy);
+  const arms=4,tilt=rng()*Math.PI;
+  ctx.rotate(tilt);
+  for(let a=0;a<arms;a++){
+    ctx.save();ctx.rotate((a/arms)*Math.PI*2);
+    for(let s=0;s<30;s++){
+      const t=s/30,r=20+t*90,angle=t*Math.PI*1.5;
+      const sx=Math.cos(angle)*r*1.8,sy=Math.sin(angle)*r*0.6;
+      const sr=4+t*10;
+      const sg=ctx.createRadialGradient(sx,sy,0,sx,sy,sr);
+      sg.addColorStop(0,`rgba(160,180,255,${0.25*(1-t)+0.05})`);
+      sg.addColorStop(1,'transparent');
+      ctx.fillStyle=sg;ctx.fillRect(sx-sr,sy-sr,sr*2,sr*2);
+    }
+    ctx.restore();
+  }
+  ctx.restore();
+  // Star dust in core
+  ctx.save();ctx.translate(gx,gy);
+  for(let i=0;i<40;i++){
+    const a=rng()*Math.PI*2,r=rng()*50;
+    ctx.fillStyle=`rgba(255,255,220,${0.3+rng()*0.6})`;
+    ctx.fillRect(Math.cos(a)*r,Math.sin(a)*r,1,1);
+  }
+  ctx.restore();
+}
+
+// ── Scene 4: Red Supernova Remnant ───────────────────────────────
+function drawSceneRedNebula(W,H,rng){
+  ctx.fillStyle='#080200';ctx.fillRect(0,0,W,H);
+  // Fiery clouds
+  const clouds=[
+    [W*0.5,H*0.4,W*0.7,['rgba(255,60,0,0.12)','rgba(200,10,0,0.07)','transparent']],
+    [W*0.3,H*0.6,W*0.4,['rgba(255,120,20,0.1)','rgba(180,40,0,0.05)','transparent']],
+    [W*0.7,H*0.25,W*0.5,['rgba(220,80,10,0.09)','transparent']],
+  ];
+  clouds.forEach(([cx,cy,cr,stops])=>{
+    const g=ctx.createRadialGradient(cx,cy,0,cx,cy,cr);
+    stops.forEach((s,i)=>g.addColorStop(i/(stops.length-1),s));
+    ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  });
+  drawStarfield(W,H,rng,80,'rgba(255,200,150,');
+  // Supernova centre remnant
+  const sx=W*(0.35+rng()*0.3),sy=H*(0.2+rng()*0.3);
+  const sg=ctx.createRadialGradient(sx,sy,0,sx,sy,40);
+  sg.addColorStop(0,'rgba(255,255,200,0.6)');sg.addColorStop(0.15,'rgba(255,120,20,0.4)');
+  sg.addColorStop(0.5,'rgba(200,30,0,0.15)');sg.addColorStop(1,'transparent');
+  ctx.fillStyle=sg;ctx.fillRect(0,0,W,H);
+  // Shock wave ring
+  ctx.save();ctx.strokeStyle='rgba(255,80,0,0.15)';ctx.lineWidth=3;
+  ctx.beginPath();ctx.arc(sx,sy,55+rng()*20,0,Math.PI*2);ctx.stroke();
+  ctx.strokeStyle='rgba(255,160,40,0.08)';ctx.lineWidth=8;
+  ctx.beginPath();ctx.arc(sx,sy,80+rng()*20,0,Math.PI*2);ctx.stroke();
+  ctx.restore();
+}
+
+// ── Scene 5: Ice Giant ───────────────────────────────────────────
+function drawSceneIceGiant(W,H,rng){
+  ctx.fillStyle='#010610';ctx.fillRect(0,0,W,H);
+  drawStarfield(W,H,rng,90,'rgba(180,220,255,');
+  const px=W*(0.25+rng()*0.5),py=H*(0.12+rng()*0.28),pr=H*(0.16+rng()*0.1);
+  const pg=ctx.createRadialGradient(px-pr*0.25,py-pr*0.25,pr*0.05,px,py,pr);
+  pg.addColorStop(0,'#a8d8f8');pg.addColorStop(0.3,'#4090d0');pg.addColorStop(0.7,'#1040a0');pg.addColorStop(1,'#050828');
+  ctx.fillStyle=pg;ctx.beginPath();ctx.arc(px,py,pr,0,Math.PI*2);ctx.fill();
+  // Ice bands
+  ctx.save();ctx.beginPath();ctx.arc(px,py,pr,0,Math.PI*2);ctx.clip();
+  ['rgba(180,230,255,0.2)','rgba(100,180,240,0.18)','rgba(60,140,210,0.22)'].forEach((c,i)=>{
+    ctx.fillStyle=c;ctx.fillRect(px-pr,py-pr+pr*0.3*i,pr*2,pr*0.2+rng()*pr*0.1);
+  });
+  ctx.restore();
+  // Rings — icy white-blue
+  ctx.save();ctx.translate(px,py);ctx.scale(1,0.22);
+  for(let r=0;r<5;r++){
+    const ri=pr*(1.3+r*0.15),ro=pr*(1.3+r*0.15+0.1);
+    const rg=ctx.createRadialGradient(0,0,ri,0,0,ro);
+    rg.addColorStop(0,`rgba(180,230,255,${0.35-r*0.06})`);
+    rg.addColorStop(1,'transparent');
+    ctx.fillStyle=rg;ctx.beginPath();ctx.arc(0,0,ro,0,Math.PI*2);ctx.fill();
+  }
+  ctx.restore();
+  // Small moon
+  const mx=px+pr*1.8,my=py-pr*0.6,mr=pr*0.12;
+  const mg=ctx.createRadialGradient(mx-mr*0.3,my-mr*0.3,0,mx,my,mr);
+  mg.addColorStop(0,'#d0e8f8');mg.addColorStop(1,'#506080');
+  ctx.fillStyle=mg;ctx.beginPath();ctx.arc(mx,my,mr,0,Math.PI*2);ctx.fill();
+}
+
+// ── Scene 6: Globular Cluster ────────────────────────────────────
+function drawSceneGlobularCluster(W,H,rng){
+  ctx.fillStyle='#040408';ctx.fillRect(0,0,W,H);
+  drawStarfield(W,H,rng,40,'rgba(200,200,255,');
+  // Dense packed star cluster
+  const cx=W*(0.3+rng()*0.4),cy=H*(0.15+rng()*0.35);
+  const layers=[
+    {r:120,count:200,col:'rgba(255,230,180,',sMax:1.5},
+    {r:70,count:120,col:'rgba(255,240,200,',sMax:1.8},
+    {r:30,count:60,col:'rgba(255,255,230,',sMax:2},
+  ];
+  layers.forEach(({r,count,col,sMax})=>{
+    for(let i=0;i<count;i++){
+      const a=rng()*Math.PI*2,d=rng()*rng()*r; // squared for density at centre
+      const x=cx+Math.cos(a)*d,y=cy+Math.sin(a)*d;
+      ctx.fillStyle=col+(0.4+rng()*0.6)+')';
+      const s=rng()*sMax;ctx.fillRect(x,y,s,s);
+    }
+  });
+  // Core glow
+  const cg=ctx.createRadialGradient(cx,cy,0,cx,cy,80);
+  cg.addColorStop(0,'rgba(255,240,180,0.5)');
+  cg.addColorStop(0.4,'rgba(255,200,100,0.15)');
+  cg.addColorStop(1,'transparent');
+  ctx.fillStyle=cg;ctx.fillRect(0,0,W,H);
+}
+
+// ── Scene 7: Twin Planets ────────────────────────────────────────
+function drawSceneTwoPlanets(W,H,rng){
+  ctx.fillStyle='#030108';ctx.fillRect(0,0,W,H);
+  drawStarfield(W,H,rng,80,'rgba(210,210,255,');
+  // Faint nebula wisps
+  const ng=ctx.createRadialGradient(W*0.5,H*0.5,0,W*0.5,H*0.5,W*0.6);
+  ng.addColorStop(0,'rgba(40,0,80,0.08)');ng.addColorStop(1,'transparent');
+  ctx.fillStyle=ng;ctx.fillRect(0,0,W,H);
+  // Planet 1 — terracotta
+  const p1x=W*0.22,p1y=H*0.25,p1r=H*0.14;
+  const g1=ctx.createRadialGradient(p1x-p1r*0.3,p1y-p1r*0.3,p1r*0.05,p1x,p1y,p1r);
+  g1.addColorStop(0,'#c07060');g1.addColorStop(0.4,'#904030');g1.addColorStop(1,'#200808');
+  ctx.fillStyle=g1;ctx.beginPath();ctx.arc(p1x,p1y,p1r,0,Math.PI*2);ctx.fill();
+  ctx.save();ctx.beginPath();ctx.arc(p1x,p1y,p1r,0,Math.PI*2);ctx.clip();
+  ctx.fillStyle='rgba(60,160,60,0.4)';ctx.beginPath();ctx.ellipse(p1x-p1r*0.1,p1y+p1r*0.1,p1r*0.5,p1r*0.3,0.4,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='rgba(40,80,200,0.4)';ctx.beginPath();ctx.ellipse(p1x+p1r*0.2,p1y-p1r*0.1,p1r*0.35,p1r*0.25,-0.2,0,Math.PI*2);ctx.fill();
+  ctx.restore();
+  // Planet 2 — gas giant teal
+  const p2x=W*0.72,p2y=H*0.32,p2r=H*0.19;
+  const g2=ctx.createRadialGradient(p2x-p2r*0.25,p2y-p2r*0.25,p2r*0.05,p2x,p2y,p2r);
+  g2.addColorStop(0,'#80d0c0');g2.addColorStop(0.35,'#208870');g2.addColorStop(0.7,'#0a4040');g2.addColorStop(1,'#020c10');
+  ctx.fillStyle=g2;ctx.beginPath();ctx.arc(p2x,p2y,p2r,0,Math.PI*2);ctx.fill();
+  ctx.save();ctx.beginPath();ctx.arc(p2x,p2y,p2r,0,Math.PI*2);ctx.clip();
+  ['rgba(100,200,180,0.18)','rgba(40,140,120,0.2)','rgba(20,100,90,0.22)'].forEach((c,i)=>{
+    ctx.fillStyle=c;ctx.fillRect(p2x-p2r,p2y-p2r*0.2+i*p2r*0.28,p2r*2,p2r*0.18);
+  });
+  ctx.restore();
+  // Moon for planet 2
+  const mx=p2x+p2r*1.4,my=p2y-p2r*0.7,mr=p2r*0.1;
+  const mg=ctx.createRadialGradient(mx,my,0,mx,my,mr);
+  mg.addColorStop(0,'#c8c8c8');mg.addColorStop(1,'#606060');
+  ctx.fillStyle=mg;ctx.beginPath();ctx.arc(mx,my,mr,0,Math.PI*2);ctx.fill();
+}
+
+// ── Scene 8: Green Nebula ────────────────────────────────────────
+function drawSceneGreenNebula(W,H,rng){
+  ctx.fillStyle='#010a06';ctx.fillRect(0,0,W,H);
+  [
+    [W*0.4,H*0.3,W*0.6,['rgba(0,200,120,0.11)','rgba(0,140,80,0.06)','transparent']],
+    [W*0.65,H*0.55,W*0.45,['rgba(20,220,160,0.09)','rgba(0,100,60,0.05)','transparent']],
+    [W*0.2,H*0.5,W*0.35,['rgba(60,180,100,0.08)','transparent']],
+  ].forEach(([cx,cy,cr,stops])=>{
+    const g=ctx.createRadialGradient(cx,cy,0,cx,cy,cr);
+    stops.forEach((s,i)=>g.addColorStop(i/(stops.length-1),s));
+    ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  });
+  drawStarfield(W,H,rng,90,'rgba(180,255,200,');
+  // Bright emission knots
+  ctx.save();ctx.globalAlpha=0.25;
+  for(let i=0;i<4;i++){
+    const kx=rng()*W,ky=rng()*H,kr=10+rng()*30;
+    const kg=ctx.createRadialGradient(kx,ky,0,kx,ky,kr);
+    kg.addColorStop(0,'rgba(100,255,180,0.7)');kg.addColorStop(1,'transparent');
+    ctx.fillStyle=kg;ctx.fillRect(0,0,W,H);
+  }
+  ctx.restore();
+}
+
+// ── Scene 9: Black Hole ──────────────────────────────────────────
+function drawSceneBlackHole(W,H,rng){
+  ctx.fillStyle='#000005';ctx.fillRect(0,0,W,H);
+  drawStarfield(W,H,rng,70,'rgba(200,210,255,');
+  const bx=W*(0.3+rng()*0.4),by=H*(0.15+rng()*0.3);
+  // Accretion disk — outer rings
+  ctx.save();ctx.translate(bx,by);ctx.scale(1,0.3);
+  const diskCols=[
+    [1.8,2.4,'rgba(255,140,20,0.18)','rgba(255,80,0,0.09)'],
+    [1.4,1.8,'rgba(255,200,60,0.28)','rgba(255,140,20,0.14)'],
+    [1.1,1.4,'rgba(255,240,180,0.35)','rgba(255,180,40,0.18)'],
+  ];
+  const bpr=H*0.1;
+  diskCols.forEach(([ri,ro,c0,c1])=>{
+    const dg=ctx.createRadialGradient(0,0,bpr*ri,0,0,bpr*ro);
+    dg.addColorStop(0,c0);dg.addColorStop(0.5,c1);dg.addColorStop(1,'transparent');
+    ctx.fillStyle=dg;ctx.beginPath();ctx.arc(0,0,bpr*ro,0,Math.PI*2);ctx.fill();
+  });
+  ctx.restore();
+  // Gravitational lensing halo
+  const bpr=H*0.1;
+  ctx.save();
+  const lensG=ctx.createRadialGradient(bx,by,bpr*0.8,bx,by,bpr*1.8);
+  lensG.addColorStop(0,'rgba(200,160,255,0.0)');
+  lensG.addColorStop(0.5,'rgba(200,160,255,0.12)');
+  lensG.addColorStop(1,'transparent');
+  ctx.fillStyle=lensG;ctx.beginPath();ctx.arc(bx,by,bpr*1.8,0,Math.PI*2);ctx.fill();
+  ctx.restore();
+  // Event horizon — pure black circle
+  ctx.fillStyle='#000000';ctx.beginPath();ctx.arc(bx,by,bpr*0.85,0,Math.PI*2);ctx.fill();
+  // Photon ring
+  ctx.save();ctx.strokeStyle='rgba(255,220,100,0.6)';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.arc(bx,by,bpr*0.85,0,Math.PI*2);ctx.stroke();
+  ctx.restore();
+}
+
+function drawPlayer(x,y,w,h){
+  ctx.save();
+  ctx.fillStyle='#7a5c1e';ctx.beginPath();ctx.moveTo(x+w/2,y);ctx.lineTo(x+w,y+h);ctx.lineTo(x,y+h);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#a07830';ctx.fillRect(x+w*0.3,y+h*0.4,w*0.4,h*0.45);
+  ctx.fillStyle='#c8982a';ctx.fillRect(x+w/2-3,y-8,6,12);
+  ctx.fillStyle='#FFD700';[[x+4,y+h-5],[x+w-4,y+h-5],[x+w/2,y+h*0.3]].forEach(([rx,ry])=>{ctx.beginPath();ctx.arc(rx,ry,2.5,0,Math.PI*2);ctx.fill();});
+  ctx.fillStyle='#6a4e18';ctx.fillRect(x+2,y+h*0.5,5,h*0.45);ctx.fillRect(x+w-7,y+h*0.5,5,h*0.45);
+  if(activePowerup){ctx.fillStyle=activePowerup==='flame'?'rgba(255,80,0,0.25)':activePowerup==='laser'?'rgba(0,220,255,0.3)':activePowerup==='triple'?'rgba(255,200,0,0.15)':'rgba(255,80,0,0.15)';ctx.beginPath();ctx.ellipse(x+w/2,y+h+4,w*0.6,6,0,0,Math.PI*2);ctx.fill();}
+  // Laser barrel charge glow
+  if(activePowerup==='laser'){
+    const pulse=0.5+0.5*Math.sin(Date.now()*0.015);
+    ctx.fillStyle=`rgba(0,220,255,${0.5+pulse*0.5})`;
+    ctx.shadowColor='#00FFFF';ctx.shadowBlur=16+pulse*12;
+    ctx.beginPath();ctx.arc(x+w/2,y-8,5,0,Math.PI*2);ctx.fill();
+    ctx.shadowBlur=0;
+  }
+  ctx.restore();
+}
+
+function drawEnemy(e){
+  const{x,y,w,h,type,animFrame:af}=e;ctx.save();
+  const col=['#c06020','#a05030','#804020','#603010'][type]||'#c06020';ctx.fillStyle=col;
+  if(type===0){
+    ctx.beginPath();ctx.ellipse(x+w/2,y+h/2,w/2-2,h/2-2,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#FFD700';for(let i=0;i<4;i++){const a=(i/4)*Math.PI*2+(af?0.3:0);ctx.beginPath();ctx.arc(x+w/2+Math.cos(a)*(w/2-1),y+h/2+Math.sin(a)*(h/2-1),2.5,0,Math.PI*2);ctx.fill();}
+    ctx.fillStyle='#1a0f00';ctx.beginPath();ctx.arc(x+w/2-5,y+h/2-2,3,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(x+w/2+5,y+h/2-2,3,0,Math.PI*2);ctx.fill();
+  }else if(type===1){
+    ctx.fillRect(x+4,y+4,w-8,h-8);ctx.fillStyle='#8B5020';ctx.fillRect(x,y+6,5,h-12);ctx.fillRect(x+w-5,y+6,5,h-12);
+    ctx.fillStyle='#FFD700';if(af){ctx.fillRect(x-3,y+4,4,3);ctx.fillRect(x+w-1,y+4,4,3);}else{ctx.fillRect(x-3,y+8,4,3);ctx.fillRect(x+w-1,y+8,4,3);}
+    ctx.fillStyle='#1a0f00';ctx.beginPath();ctx.arc(x+w/2-4,y+h/2,2.5,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(x+w/2+4,y+h/2,2.5,0,Math.PI*2);ctx.fill();
+  }else{
+    ctx.beginPath();for(let i=0;i<8;i++){const a=(i/8)*Math.PI*2+(af?0.2:0),r=i%2===0?w/2-2:w/2-6;if(i===0)ctx.moveTo(x+w/2+Math.cos(a)*r,y+h/2+Math.sin(a)*r);else ctx.lineTo(x+w/2+Math.cos(a)*r,y+h/2+Math.sin(a)*r);}
+    ctx.closePath();ctx.fill();ctx.fillStyle='#FFD700';ctx.beginPath();ctx.arc(x+w/2,y+h/2,4,0,Math.PI*2);ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawBoss(b){
+  ctx.save();const{x,y,w,h}=b;
+  ctx.fillStyle='#5a3a10';ctx.beginPath();ctx.ellipse(x+w/2,y+h/2,w/2,h/2,0,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#D4A017';ctx.lineWidth=2;for(let i=1;i<4;i++){ctx.beginPath();ctx.ellipse(x+w/2,y+h/2,(w/2)*(i/4),(h/2),0,0,Math.PI*2);ctx.stroke();}
+  ctx.fillStyle='#7a5c1e';ctx.fillRect(x+w/2-12,y+h-4,24,10);
+  ctx.fillStyle='#D4A017';
+  ctx.save();ctx.translate(x+8,y+h/2);ctx.rotate(b.animTimer*0.1);ctx.fillRect(-2,-8,4,16);ctx.fillRect(-8,-2,16,4);ctx.restore();
+  ctx.save();ctx.translate(x+w-8,y+h/2);ctx.rotate(-b.animTimer*0.1);ctx.fillRect(-2,-8,4,16);ctx.fillRect(-8,-2,16,4);ctx.restore();
+  ctx.restore();
+}
+
+function drawDiveBomber(d){
+  ctx.save();const{x,y,w,h,hp,maxHp,isGauntlet}=d;
+  const bodyCol=isGauntlet?'#5a0010':'#3a1a60';
+  const trimCol=isGauntlet?'#ff2040':'#a060ff';
+  const wingCol=isGauntlet?'#8a0020':'#5a2a80';
+  const eyeCol =isGauntlet?'#ff0000':'#ff60ff';
+  const glowCol=isGauntlet?'rgba(255,0,60,0.5)':'rgba(180,80,255,0.5)';
+  ctx.fillStyle=bodyCol;ctx.beginPath();ctx.moveTo(x+w/2,y+h);ctx.lineTo(x,y+4);ctx.lineTo(x+w,y+4);ctx.closePath();ctx.fill();
+  ctx.strokeStyle=trimCol;ctx.lineWidth=1.5;ctx.stroke();
+  ctx.fillStyle=glowCol;ctx.beginPath();ctx.ellipse(x+w/2,y+4,w*0.4,5,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=wingCol;ctx.fillRect(x-10,y+5,12,9);ctx.fillRect(x+w-2,y+5,12,9);
+  if(isGauntlet){ctx.fillStyle='#ff6080';ctx.beginPath();ctx.arc(x-5,y+9,2,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(x+w+5,y+9,2,0,Math.PI*2);ctx.fill();}
+  ctx.fillStyle=eyeCol;ctx.shadowColor=eyeCol;ctx.shadowBlur=10;ctx.beginPath();ctx.arc(x+w/2,y+h/2,4,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
+  // HP pips
+  const totalW=(maxHp-1)*9;
+  for(let i=0;i<maxHp;i++){
+    ctx.fillStyle=i<hp?trimCol:'#2a1a2a';
+    ctx.beginPath();ctx.arc(x+w/2-totalW/2+i*9,y-9,3.5,0,Math.PI*2);ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawBullet(b){
+  ctx.save();
+  if(b.type==='explosive'){ctx.fillStyle='#FF4400';ctx.shadowColor='#FF6600';ctx.shadowBlur=10;ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill();ctx.fillStyle='#FFaa00';ctx.beginPath();ctx.arc(b.x,b.y,b.r*0.5,0,Math.PI*2);ctx.fill();}
+  else if(b.type==='triple'){ctx.fillStyle='#00DDFF';ctx.shadowColor='#00FFFF';ctx.shadowBlur=8;ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill();}
+  else{ctx.fillStyle='#FFD700';ctx.shadowColor='#FFD700';ctx.shadowBlur=6;ctx.fillRect(b.x-2,b.y-6,4,10);}
+  ctx.restore();
+}
+
+function drawFlameParticle(p){
+  ctx.save();ctx.globalAlpha=p.life*0.85;
+  ctx.fillStyle=['#FF2200','#FF6600','#FF9900','#FFD700'][Math.floor((1-p.life)*4)]||'#FF2200';
+  ctx.shadowColor='#FF4400';ctx.shadowBlur=12;ctx.beginPath();ctx.arc(p.x,p.y,p.r*p.life,0,Math.PI*2);ctx.fill();ctx.restore();
+}
+
+function drawPowerup(p){
+  ctx.save();p.bob+=0.08;const bY=Math.sin(p.bob)*3;
+  const colM={triple:'#00DDFF',explosive:'#FF4400',flame:'#FF6600',laser:'#00FFFF'};
+  const lblM={triple:'3',explosive:'✦',flame:'🔥',laser:'⚡'};
+  ctx.fillStyle=colM[p.type]||'#FFD700';ctx.shadowColor=colM[p.type]||'#FFD700';ctx.shadowBlur=16;
+  ctx.beginPath();ctx.arc(p.x+p.w/2,p.y+p.h/2+bY,10,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#fff';ctx.font='bold 10px serif';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(lblM[p.type]||'?',p.x+p.w/2,p.y+p.h/2+bY);ctx.restore();
+}
+
+function drawExplosion(x,y,t){
+  ctx.save();ctx.globalAlpha=1-t;
+  ctx.fillStyle='#FF8800';ctx.shadowColor='#FF4400';ctx.shadowBlur=20;ctx.beginPath();ctx.arc(x,y,t*20,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#FFD700';ctx.beginPath();ctx.arc(x,y,t*10,0,Math.PI*2);ctx.fill();ctx.restore();
+}
+function addExplosion(x,y){explosions.push({x,y,t:0});}
+
+// ── Laser beam rendering ─────────────────────────────────────────
+function drawLaserBeam(lb){
+  if(!lb)return;
+  const H=canvas.height;
+  const a=lb.life/lb.maxLife; // 1→0 fade
+  const coreW=6+a*10;
+  const glowW=30+a*40;
+  ctx.save();
+  // Outer glow
+  const grd=ctx.createLinearGradient(lb.x-glowW,0,lb.x+glowW,0);
+  grd.addColorStop(0,'transparent');
+  grd.addColorStop(0.3,`rgba(0,200,255,${a*0.25})`);
+  grd.addColorStop(0.5,`rgba(180,255,255,${a*0.5})`);
+  grd.addColorStop(0.7,`rgba(0,200,255,${a*0.25})`);
+  grd.addColorStop(1,'transparent');
+  ctx.fillStyle=grd;
+  ctx.fillRect(lb.x-glowW,0,glowW*2,H);
+  // Mid beam
+  ctx.globalAlpha=a*0.8;
+  ctx.fillStyle='#00EEFF';
+  ctx.shadowColor='#00FFFF';ctx.shadowBlur=30;
+  ctx.fillRect(lb.x-coreW/2,0,coreW,H);
+  // Core white
+  ctx.globalAlpha=a;
+  ctx.fillStyle='#FFFFFF';
+  ctx.fillRect(lb.x-2,0,4,H);
+  ctx.restore();
+}
+
+// ── Game loop ────────────────────────────────────────────────────
+function loop(ts){
+  if(!gameRunning)return;
+  const dt=Math.min((ts-lastTime)/16,3);lastTime=ts;
+  update(dt);draw();frameId=requestAnimationFrame(loop);
+}
+
+// ── Hit test a dive-bomber; returns true if bullet used ─────────
+function hitDiveBomber(d,x,y){
+  return d.alive&&x>d.x&&x<d.x+d.w&&y>d.y&&y<d.y+d.h;
+}
+function damageDB(d){
+  d.hp--;addExplosion(d.x+d.w/2,d.y+d.h/2);
+  if(d.hp<=0){
+    d.alive=false;
+    score+=d.isGauntlet?400:250;
+    if(!d.isGauntlet)spawnPowerup(d.x+d.w/2,d.y+d.h);
+    if(isGauntletWave){gauntletRemaining--;checkGauntletComplete();}
+    else{diveBomberTimer=400+Math.random()*400;}
+  }
+}
+
+// ── Update ───────────────────────────────────────────────────────
+function update(dt){
+  const W=canvas.width,H=canvas.height;
+
+  // Player move
+  let md=0;
+  if(keys['ArrowLeft']||keys['a'])md=-1;
+  if(keys['ArrowRight']||keys['d'])md=1;
+  if(sliderVal!==0)md=sliderVal;
+  player.x=Math.max(0,Math.min(W-player.w,player.x+md*player.speed*dt));
+
+  if(fireCD>0)fireCD-=dt;
+  if(activePowerup){powerupTimer-=dt;if(powerupTimer<=0)activePowerup=null;}
+  if(activePowerup==='flame'&&keys[' ']&&fireCD<=0)shoot();
+
+  // ── Bullets ─────────────────────────────────────────────────
+  bullets=bullets.filter(b=>{
+    b.x+=b.dx*dt;b.y+=b.dy*dt;
+    if(b.y<-10||b.x<-10||b.x>W+10)return false;
+    let hit=false;
+
+    if(!isGauntletWave){
+      for(let e of enemies.filter(e=>e.alive)){
+        if(b.x>e.x&&b.x<e.x+e.w&&b.y>e.y&&b.y<e.y+e.h){
+          e.alive=false;addExplosion(e.x+e.w/2,e.y+e.h/2);score+=10*(e.type+1);hit=true;
+          if(b.type==='explosive'){const idx=enemies.indexOf(e);[-1,1].forEach(off=>{const n=enemies[idx+off];if(n&&n.alive&&Math.abs(n.y-e.y)<5){n.alive=false;addExplosion(n.x+n.w/2,n.y+n.h/2);score+=10*(n.type+1);}});}
+          break;
+        }
+      }
+      if(!hit&&boss&&boss.alive&&b.x>boss.x&&b.x<boss.x+boss.w&&b.y>boss.y&&b.y<boss.y+boss.h){
+        boss.alive=false;score+=150;addExplosion(boss.x+boss.w/2,boss.y+boss.h/2);
+        spawnPowerup(boss.x+boss.w/2,boss.y+boss.h,true);boss=null;hit=true;
+      }
+    }
+
+    if(!hit){
+      for(let d of diveBombers){
+        if(hitDiveBomber(d,b.x,b.y)){damageDB(d);hit=true;break;}
+      }
+    }
+    return !hit;
+  });
+
+  // ── Flame particles ──────────────────────────────────────────
+  flameParticles=flameParticles.filter(p=>{
+    p.x+=p.dx*dt;p.y+=p.dy*dt;p.life-=0.04*dt;if(p.life<=0)return false;
+    if(!isGauntletWave){
+      for(let e of enemies.filter(e=>e.alive)){if(p.x>e.x&&p.x<e.x+e.w&&p.y>e.y&&p.y<e.y+e.h){e.alive=false;addExplosion(e.x+e.w/2,e.y+e.h/2);score+=10*(e.type+1);p.life=0;return false;}}
+      if(boss&&boss.alive&&p.x>boss.x&&p.x<boss.x+boss.w&&p.y>boss.y&&p.y<boss.y+boss.h){boss.alive=false;score+=150;addExplosion(boss.x+boss.w/2,boss.y+boss.h/2);spawnPowerup(boss.x+boss.w/2,boss.y+boss.h,true);boss=null;p.life=0;return false;}
+    }
+    for(let d of diveBombers){if(hitDiveBomber(d,p.x,p.y)){damageDB(d);p.life=0;return false;}}
+    return true;
+  });
+
+  // ── Normal wave ──────────────────────────────────────────────
+  if(!isGauntletWave){
+    const alive=enemies.filter(e=>e.alive);
+    if(alive.length===0){advanceWave();return;}
+
+    let minX=Infinity,maxX=-Infinity;
+    alive.forEach(e=>{minX=Math.min(minX,e.x);maxX=Math.max(maxX,e.x+e.w);});
+    let drop=false;
+    if(maxX>=W-10&&enemyDir>0){enemyDir=-1;drop=true;}
+    if(minX<=10&&enemyDir<0){enemyDir=1;drop=true;}
+    enemies.forEach(e=>{
+      if(!e.alive)return;
+      e.x+=enemySpeed*enemyDir*dt;if(drop)e.y+=16;
+      e.animTimer=(e.animTimer||0)+dt;if(e.animTimer>20){e.animTimer=0;e.animFrame=1-e.animFrame;}
+      if(e.y+e.h>=player.y){loseLife();return;}
+    });
+
+    if(Math.random()<0.008*dt*Math.min(wave,5)){
+      const s=alive.filter(e=>e.alive);
+      if(s.length){const e=s[Math.floor(Math.random()*s.length)];enemyBullets.push({x:e.x+e.w/2,y:e.y+e.h,dy:3+wave*0.3});}
+    }
+
+    bossTimer-=dt;if(bossTimer<=0&&!boss){spawnBoss();bossTimer=500+Math.random()*400;}
+    if(boss){boss.x+=boss.dx*dt;boss.animTimer+=dt;if(boss.x>W+100||boss.x<-100)boss=null;}
+
+    // Roving dive-bomber (normal wave only — single bomber)
+    diveBomberTimer-=dt;
+    if(diveBomberTimer<=0&&diveBombers.filter(d=>d.alive).length===0){
+      diveBombers=[makeDiveBomber(false)];
+    }
+  } else {
+    // ── Gauntlet spawn queue ─────────────────────────────────
+    if(gauntletSpawnQueue>0){
+      gauntletSpawnTimer-=dt;
+      if(gauntletSpawnTimer<=0){
+        diveBombers.push(makeDiveBomber(true));
+        gauntletSpawnQueue--;
+        gauntletSpawnTimer=130;
+      }
+    }
+  }
+
+  // ── Dive-bomber AI (all modes) ───────────────────────────────
+  diveBombers=diveBombers.filter(d=>{
+    if(!d.alive)return false;
+    d.animTimer+=dt;
+    if(d.phase==='dive'){
+      d.y+=d.vy*dt;
+      d.x+=(player.x+player.w/2-d.w/2-d.x)*0.02*dt;
+      if(d.y>=d.targetY){d.phase='hover';d.retreatTimer=isGauntletWave?110:80;}
+      if(d.x+d.w>player.x&&d.x<player.x+player.w&&d.y+d.h>player.y&&d.y<player.y+player.h){
+        loseLife();addExplosion(player.x+player.w/2,player.y+player.h/2);
+      }
+    }else if(d.phase==='hover'){
+      d.retreatTimer-=dt;d.shootCD-=dt;
+      if(d.shootCD<=0){
+        d.shootCD=isGauntletWave?20:30;
+        const dx=(player.x+player.w/2)-(d.x+d.w/2),dy=player.y-(d.y+d.h),len=Math.sqrt(dx*dx+dy*dy)||1,spd=isGauntletWave?4.5:3.5;
+        enemyBullets.push({x:d.x+d.w/2,y:d.y+d.h,dx:dx/len*spd,dy:dy/len*spd,aimed:true});
+      }
+      if(d.retreatTimer<=0)d.phase='retreat';
+    }else{
+      d.y-=d.vy*1.5*dt;
+      if(d.y<-60){
+        if(isGauntletWave){gauntletRemaining--;checkGauntletComplete();}
+        else{diveBomberTimer=400+Math.random()*400;}
+        return false;
+      }
+    }
+    return true;
+  });
+
+  // ── Enemy bullets ────────────────────────────────────────────
+  enemyBullets=enemyBullets.map(b=>{
+    if(b.aimed){b.x+=(b.dx||0)*dt;b.y+=(b.dy||0)*dt;}else b.y+=b.dy*dt;return b;
+  }).filter(b=>{
+    if(b.y>H||b.y<-10||b.x<-10||b.x>W+10)return false;
+    if(b.x>player.x&&b.x<player.x+player.w&&b.y>player.y&&b.y<player.y+player.h){
+      loseLife();addExplosion(player.x+player.w/2,player.y+player.h/2);return false;
+    }
+    return true;
+  });
+
+  if(powerup){
+    powerup.y+=powerup.vy*dt;
+    if(powerup.y>H)powerup=null;
+    else if(powerup.x+powerup.w>player.x&&powerup.x<player.x+player.w&&powerup.y+powerup.h>player.y&&powerup.y<player.y+player.h){
+      activePowerup=powerup.type;powerupTimer=500;showPowerupMsg(powerup.type);powerup=null;
+    }
+  }
+
+  explosions=explosions.filter(ex=>{ex.t+=0.06*dt;return ex.t<1;});
+  if(laserBeam){laserBeam.life-=dt;if(laserBeam.life<=0)laserBeam=null;}
+  updateUI();
+}
+
+function checkGauntletComplete(){
+  if(gauntletRemaining<=0&&gauntletSpawnQueue<=0&&diveBombers.filter(d=>d.alive).length===0)advanceWave();
+}
+
+function advanceWave(){wave++;spawnPlayer();beginWave();updateUI();}
+
+function loseLife(){lives--;updateUI();if(lives<=0)endGame();else spawnPlayer();}
+
+function endGame(){
+  gameRunning=false;overlay.style.display='flex';
+  document.querySelector('#overlay h1').textContent='GAME OVER';
+  finalScore.textContent='Score: '+score;startBtn.textContent='TRY AGAIN';
+}
+
+// ── Draw ─────────────────────────────────────────────────────────
+function draw(){
+  const W=canvas.width,H=canvas.height;
+  drawBackground();
+  ctx.strokeStyle='#8B6914';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+  ctx.beginPath();ctx.moveTo(0,H-48);ctx.lineTo(W,H-48);ctx.stroke();ctx.setLineDash([]);
+
+  if(!isGauntletWave){enemies.forEach(e=>{if(e.alive)drawEnemy(e);});if(boss)drawBoss(boss);}
+  diveBombers.forEach(d=>{if(d.alive)drawDiveBomber(d);});
+  bullets.forEach(b=>drawBullet(b));
+  flameParticles.forEach(p=>drawFlameParticle(p));
+  enemyBullets.forEach(b=>{
+    ctx.save();
+    if(b.aimed){ctx.fillStyle='#ff60ff';ctx.shadowColor='#ff00ff';ctx.shadowBlur=8;}
+    else{ctx.fillStyle='#FF3300';ctx.shadowColor='#FF6600';ctx.shadowBlur=6;}
+    ctx.beginPath();ctx.arc(b.x,b.y,4,0,Math.PI*2);ctx.fill();ctx.restore();
+  });
+  if(powerup)drawPowerup(powerup);
+  if(laserBeam)drawLaserBeam(laserBeam);
+  drawPlayer(player.x,player.y,player.w,player.h);
+  explosions.forEach(ex=>drawExplosion(ex.x,ex.y,ex.t));
+
+  // Gauntlet HUD
+  if(isGauntletWave){
+    const alive=diveBombers.filter(d=>d.alive).length;
+    const destroyed=gauntletTotal-(alive+gauntletSpawnQueue);
+    ctx.save();ctx.font='bold 11px Special Elite,serif';ctx.fillStyle='#ff60ff';
+    ctx.textAlign='center';ctx.textBaseline='top';ctx.shadowColor='#ff00ff';ctx.shadowBlur=8;
+    ctx.fillText(`BOMBERS: ${destroyed}/${gauntletTotal} destroyed`,W/2,34);ctx.restore();
+  }
+}
+
+function drawTitle(){
+  const W=canvas.width,H=canvas.height;
+  drawBackground();ctx.save();
+  ctx.fillStyle='#D4A017';ctx.font='bold 32px Special Elite,serif';
+  ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('STEAM INVADERS',W/2,H/2);ctx.restore();
+}
+drawTitle();
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
